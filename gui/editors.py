@@ -7,9 +7,10 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QComboBox,
     QLineEdit, QSpinBox, QGridLayout,
     QLabel, QHBoxLayout, QMessageBox,
-    QDialogButtonBox
+    QDialogButtonBox, QVBoxLayout,
+    QGroupBox
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import QRegularExpressionValidator
 
 IMPORTED = os.path.abspath(os.path.join(
@@ -18,8 +19,24 @@ IMPORTED = os.path.abspath(os.path.join(
 ))
 sys.path.append(IMPORTED)
 
-from const.dataconsts import MACROS as macros
-from gui.widgets import PushButton, ButtonGroup, DomainsTree
+from const.dataconsts import*
+from gui.widgets import *
+
+LBL_WIDTH = 80
+
+
+def builder(widgets: dict):
+
+    vbox = QVBoxLayout()
+    for l, w in widgets.items():
+        hbox = QHBoxLayout()
+        lbl = QLabel(l)
+        lbl.setFixedSize(QSize(LBL_WIDTH, 24))
+        hbox.addWidget(lbl)
+        hbox.addWidget(w)
+        vbox.addLayout(hbox)
+    return vbox
+
 
 
 class MacrosEditor(QDialog):
@@ -28,78 +45,178 @@ class MacrosEditor(QDialog):
         super(MacrosEditor, self).__init__(parent, f)
 
         self._data: dict = None
+        self.mlayout = QGridLayout()
         self.domains = DomainsTree(self)
         self.macros = QComboBox()
         self.name = QLineEdit()
         self.inlet = QComboBox()
         self.outlet = QComboBox()
+        self.throat = QComboBox()
         self.blade = QComboBox()
         self.num_baldes = QSpinBox()
         self.axis = QComboBox()
         self.rot_speed = QLineEdit()
+        self.throat = QComboBox()
 
         self.setWindowTitle("Macros editor")
-
+        self.macros.currentIndexChanged.connect(self.itemsEnable)
 
     def setup(self):
 
-        widgets = [self.macros, self.name, self.inlet, self.outlet,
-                   self.blade, self.num_baldes, self.axis, self.rot_speed]
-        labels = ["Macros", "Name","Inlet Region", "Outlet Region", 
-                "Blade Region", "Num. Blades", "Machine Axis", "Rot. Speed"]
+        self.setFixedSize(320, 280)
+        h = self.parent().size().height()
+        w = self.parent().size().width()
+        x = self.parent().pos().x() + w / 2 - 160
+        y = self.parent().pos().y() + h / 2 - 140
+        self.setGeometry(QRect(x, y, 320, 280))
+        self.setModal(True)
+
+        layout1 = QHBoxLayout()
+        lbl = QLabel('Macros')
+        lbl.setFixedSize(QSize(LBL_WIDTH, 24))
+        layout1.addWidget(lbl)
+        layout1.addWidget(self.macros)
+        layout2 = QHBoxLayout()
+        lbl = QLabel('Name')
+        lbl.setFixedSize(QSize(LBL_WIDTH, 24))
+        layout2.addWidget(lbl)
+        layout2.addWidget(self.name)
+        self.macros.addItems([m.description() for m in Macros])
+
+        re = QRegularExpressionValidator("-?\\d{1,6}.\\d{1,6}", self)
+        self.rot_speed.setValidator(re)
+        self.mlayout.addLayout(layout1, 0, 0)
+        self.mlayout.addLayout(layout2, 1, 0)
+        self.buildEditor(0)
+
+    def buildEditor(self, idx: int) -> QGroupBox:
+
+
+        gb = QGroupBox(Macros(idx).description())
+
+        if idx in Macros.model1():
+            widgets = {
+                'Inlet Region': self.inlet, 'Outlet Regoin': self.outlet,
+                'Blade Region': self.blade, 'Num. Blades': self.num_baldes,
+                'Machine Axis': self.axis, 'Rot. Speed': self.rot_speed
+            }
+            inlet = PushButton()
+            outlet = PushButton()
+            blade = PushButton()
+            inlet.setObjectName('inlet')
+            outlet.setObjectName('outlet')
+            blade.setObjectName('blade')
+            btns = [inlet, outlet, blade]
+        elif idx in Macros.model2():
+            widgets = {
+                'Inlet Region': self.inlet, 'Outlet Regoin': self.outlet,
+                'Throat Region': self.throat, 'Num. Blades': self.num_baldes,
+                'Machine Axis': self.axis
+            }
+            inlet = PushButton()
+            outlet = PushButton()
+            throat = PushButton()
+            inlet.setObjectName('inlet')
+            outlet.setObjectName('outlet')
+            throat.setObjectName('throat')
+            btns = [inlet, outlet, throat]
+
+        self.btns = ButtonGroup(self)
+        self.btns.buttonClicked.connect(self.showDomainList)
+
+        for idx, btn in enumerate(btns, 2):
+            self.btns.addButton(btn, idx)
+
+        for row, (lbl, widget) in enumerate(widgets.items(), 2):
+            if isinstance(widget, QWidget):
+                hbox = QHBoxLayout()
+                label = QLabel(lbl)
+                label.setFixedSize(QSize(LBL_WIDTH, 24))
+                hbox.addWidget(label)
+                hbox.addWidget(widget)
+                mlayout.addLayout(hbox, row, 0)
+
+        for row, btn in enumerate(self.btns.buttons(), 2):
+            btn.setup(text='...', size=[24, 24], enabled=False)
+            mlayout.addWidget(btn, row, 2)
+
         self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         btn_layout = QHBoxLayout()
+
         btn_layout.addWidget(self.buttonBox)
+        mlayout.addLayout(btn_layout, len(widgets)+2, 0, 1, 0)
+        self.setLayout(mlayout)
 
-        inlet = PushButton()
-        outlet = PushButton()
-        blade = PushButton()
+    # def setup(self):
+    #     self.setFixedSize(320, 280)
+    #     h = self.parent().size().height()
+    #     w = self.parent().size().width()
+    #     x = self.parent().pos().x() + w / 2 - 160
+    #     y = self.parent().pos().y() + h / 2 - 140
+    #     self.setGeometry(QRect(x, y, 320, 280))
+    #     self.setModal(True)
 
-        inlet.setObjectName('inlet')
-        self.inlet.setObjectName('inlet')
-        outlet.setObjectName('outlet')
-        self.outlet.setObjectName('outlet')     
-        blade.setObjectName('blade')
-        self.blade.setObjectName('blade')
+    #     widgets = [self.macros, self.name, self.inlet, self.outlet,
+    #                self.blade, self.num_baldes, self.axis, self.rot_speed]
+    #     labels = ["Macros", "Name","Inlet Region", "Outlet Region", 
+    #             "Blade Region", "Num. Blades", "Machine Axis", "Rot. Speed"]
+    #     self.buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+    #     self.buttonBox.accepted.connect(self.accept)
+    #     self.buttonBox.rejected.connect(self.reject)
+    #     btn_layout = QHBoxLayout()
+    #     btn_layout.addWidget(self.buttonBox)
 
-        self.btns = ButtonGroup(self)
-        self.btns.addButton(inlet, 2)
-        self.btns.addButton(outlet, 3)
-        self.btns.addButton(blade, 4)
-        self.btns.buttonClicked.connect(self.showDomainList)
+    #     inlet = PushButton()
+    #     outlet = PushButton()
+    #     blade = PushButton()
 
-        layout = QGridLayout()
-        for row, btn in enumerate(self.btns.buttons(), 2):
-            btn.setup(text='...', size=[24, 24], enabled=False)
-            layout.addWidget(btn, row, 2)
+    #     inlet.setObjectName('inlet')
+    #     self.inlet.setObjectName('inlet')
+    #     outlet.setObjectName('outlet')
+    #     self.outlet.setObjectName('outlet')     
+    #     blade.setObjectName('blade')
+    #     self.blade.setObjectName('blade')
+    #     self.rot_speed.setObjectName('rot_speed')
 
-        for row, (lb, w) in enumerate(zip(labels, widgets)):
-            layout.addWidget(QLabel(lb), row, 0)
-            layout.addWidget(w, row, 1)
+    #     self.btns = ButtonGroup(self)
+    #     self.btns.addButton(inlet, 2)
+    #     self.btns.addButton(outlet, 3)
+    #     self.btns.addButton(blade, 4)
+    #     self.btns.buttonClicked.connect(self.showDomainList)
 
-        re = QRegularExpressionValidator("-?\\d{1,6}.\\d{1,6}", self)
-        self.rot_speed.setValidator(re)
+    #     layout = QGridLayout()
+    #     for row, btn in enumerate(self.btns.buttons(), 2):
+    #         btn.setup(text='...', size=[24, 24], enabled=False)
+    #         layout.addWidget(btn, row, 2)
 
-        layout.addLayout(btn_layout, row+1, 0, 1, 0)
-        self.setLayout(layout)
+    #     for row, (lb, w) in enumerate(zip(labels, widgets)):
+    #         layout.addWidget(QLabel(lb), row, 0)
+    #         layout.addWidget(w, row, 1)
+
+    #     re = QRegularExpressionValidator("-?\\d{1,6}.\\d{1,6}", self)
+    #     self.rot_speed.setValidator(re)
+
+    #     layout.addLayout(btn_layout, row+1, 0, 1, 0)
+    #     self.setLayout(layout)
 
     def clear(self):
-
-        self.macros.clear()
+        
+        # self.macros.clear()
         self.name.clear()
         self.inlet.clear()
         self.outlet.clear()
         self.blade.clear()
         self.num_baldes.setValue(0)
-        self.axis.clear()
+        # self.axis.clear()
         self.rot_speed.setText('0')
 
     def update(self, data: dict = None) -> None:
+        pass
         self.clear()
-        self.axis.addItems(['X', 'Y', 'Z'])
-        self.macros.addItems(macros)
+        # self.axis.addItems(['X', 'Y', 'Z'])
+        # self.macros.addItems([m.describe() for m in Macros])
 
         if not data:
             return None
@@ -124,9 +241,9 @@ class MacrosEditor(QDialog):
         if rs := data.get('rot_speed', None):
             try:
                 rs = float(rs)
-                self.rot_speed(str(rs))
+                self.rot_speed.setText(str(rs))
             except ValueError:
-                self.rot_speed('0')
+                self.rot_speed.setText('0')
 
     @property
     def data(self):
@@ -136,6 +253,10 @@ class MacrosEditor(QDialog):
     def data(self, data: dict | None):
         if not isinstance(data, dict | None): return None
         self._data = data
+
+    def itemsEnable(self):
+        index = self.sender().currentIndex()
+        self.buildEditor(index)
 
     def showDomainList(self, btn: PushButton):
 

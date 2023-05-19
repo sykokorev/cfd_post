@@ -28,7 +28,8 @@ class MacroCalc(AbstractDataModel):
     @property
     def data(self) -> dict:
         return {
-            'macros': self.data, 'inlet': self.inlet,
+            'macros': self.macros,
+            'name': self.name, 'inlet': self.inlet,
             'outlet': self.outlet, 'blade': self.blade,
             'num_blades': self.num_blades, 'axis': self.axis,
             'rot_speed': self.rot_speed, 'tooltip': self.tooltip
@@ -44,6 +45,7 @@ class MacroCalc(AbstractDataModel):
         return super().update(data)
 
     def update(self, data: dict) -> bool:
+
         if not isinstance(data, dict) : return False
 
         for k, v in data.items():

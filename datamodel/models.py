@@ -81,6 +81,34 @@ class AbstractDataCache(metaclass=ABCMeta):
         except Exception:
             return False
 
+    def moveDown(self, idx: int) -> bool:
+
+        if not isinstance(idx, int):
+            raise TypeError(Error.NOTINT.value.format('ID', type(idx).__class__.__name__))
+
+        if idx < 0 or idx > len(self.cache): return False
+
+        try:
+            pop = self.cache.pop(idx)
+            self.cache.insert(idx+1, pop)
+            return True
+        except:
+            return False
+
+    def moveUp(self, idx: int) -> bool:
+
+        if not isinstance(idx, int):
+            raise TypeError(Error.NOTINT.value.format('ID', type(idx).__class__.__name__))
+
+        if idx < 0 or idx > len(self.cache): return False
+
+        try:
+            pop = self.cache.pop(idx)
+            self.cache.insert(idx-1, pop)
+            return True
+        except:
+            return False
+
     def get(self, idx: int) -> AbstractDataModel | None:
 
         if not isinstance(idx, int):
@@ -93,15 +121,26 @@ class AbstractDataCache(metaclass=ABCMeta):
         except Exception:
             return None
 
-    def update(self, idx: int, data: dict) -> bool:
+    def delete(self, idx: int):
 
+        if not isinstance(idx, int):
+            raise TypeError(Error.NOTINT.value.format('ID', type(idx).__class__.__name__))
+
+        try:
+            return self.cache.pop(idx)
+        except IndexError:
+            return None
+        except Exception:
+            return None
+
+    def update(self, idx: int, data: dict) -> bool:
         if not isinstance(idx, int):
             raise TypeError(Error.NOTINT.value.format('ID', type(idx).__class__.__name__))
         if not isinstance(data, dict) : raise TypeError(Error.DATAERROR.value.format(type(data)))
 
         try:
-            data: AbstractDataModel = self.cache[idx]
-            data.update(data)
+            model: AbstractDataModel = self.cache[idx]
+            model.update(data)
             return True
         except IndexError:
             return False

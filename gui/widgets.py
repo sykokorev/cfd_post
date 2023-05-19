@@ -2,24 +2,21 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import List, Union
 
 from PySide6.QtWidgets import (
-    QListView, QWidget, QPushButton,
+    QWidget, QPushButton,
     QTreeWidgetItem, QTreeWidget,
     QButtonGroup, QDialog, QGridLayout,
     QHBoxLayout, QDialogButtonBox
 )
-from PySide6.QtCore import QSize
-from PySide6 import QtGui
+from PySide6.QtCore import QSize, QObject
+from PySide6.QtGui import Qt
 
 IMPORTED = os.path.abspath(os.path.join(
     os.path.dirname(__file__),
     os.pardir
 ))
 sys.path.append(IMPORTED)
-
-from gui.model import *
 
 
 class PushButton(QPushButton):
@@ -90,20 +87,3 @@ class DomainsTree(QDialog):
     def reject(self) -> None:
         self.interface = None
         return super().reject()
-
-
-class MacrosListView(QListView):
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._editor = None
-
-    def setEditor(self, editor):
-        self._editor = editor
-        self.model().setEditor(self._editor)
-
-    def update(self, index: QModelIndex | QPersistentModelIndex) -> None:
-        return super().update(index)
-
-    def editor(self):
-        return self._editor

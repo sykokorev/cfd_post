@@ -4,11 +4,12 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QGridLayout,
     QHBoxLayout, QLabel, QFileDialog,
-    QGroupBox, QVBoxLayout
+    QGroupBox
 )
 from PySide6.QtCore import Qt, QSize, Slot
+from PySide6.QtGui import QActionEvent
 
-from gui.model import *
+from gui.model import ListModel, ListView
 from gui.widgets import *
 from gui.editors import *
 from datamodel.data import *
@@ -53,13 +54,11 @@ class View(QMainWindow):
         self.buttons.buttonClicked.connect(self.buttonClicked)
 
         # Macros list and info
-        self.macro_model = ListModel(data=self.data)
-        self.macro_list = MacrosListView(parent=self)
-        self.macro_list.setModel(self.macro_model)
-        self.macro_list.setEditor(MacrosEditor(self.macro_list))
-        self.macro_list.editor().setup()
-        self.macro_list.setEnabled(False)
-        self.macro_list.clicked.connect(self.setInfo)
+        self.data_model = ListModel(data=self.data)
+        self.data_view = ListView(parent=self)
+        self.data_view.setModel(self.data_model)
+        self.data_view.setEnabled(False)
+        self.data_view.clicked.connect(self.setInfo)
 
         info_layout = QHBoxLayout()
         self.info = QLabel()
@@ -83,7 +82,7 @@ class View(QMainWindow):
 
         layout = QGridLayout()
         btn_layout = QHBoxLayout()
-        layout.addWidget(self.macro_list, 0, 0, 2, 1)
+        layout.addWidget(self.data_view, 0, 0, 2, 1)
         layout.addWidget(groupbox, 0, 1)
         layout.addWidget(group_files_box, 1, 1)
         for btn in self.buttons.buttons():
@@ -118,21 +117,22 @@ class View(QMainWindow):
                 filter="ANSYS out (*.out)", dir=CURDIR)
                 if self.out_file[0]:
                     self.buttons.button(2).setEnabled(True)
-                    self.macro_list.setEnabled(True)
+                    self.data_view.setEnabled(True)
                     self.domains = get_domains(self.out_file[0])
             case 2:
-                editor = self.macro_list.editor()
                 data = {'domains': self.domains}
-                editor.update(data)
-                editor.exec()
                 macros = MacroCalc()
+                editor = MacrosEditor(parent=self)
+                editor.setup()
+                editor.update(data=data)
+                editor.exec()
                 if data := editor.data:
-                    macros.add(data)
+                    macros.add(data=data)
                     self.data.add(macros)
-                    self.macro_list.model().layoutChanged.emit()
+                    self.data_view.model().layoutChanged.emit()
 
     def setInfo(self):
-        text = self.macro_model.getData(self.macro_list.currentIndex())
+        text = self.data_model.get(self.data_view.currentIndex())
         if text:
             view = text.view()
             self.info.setText(view)
